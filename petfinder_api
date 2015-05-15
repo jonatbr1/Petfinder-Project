@@ -1,0 +1,14 @@
+import urllib.request
+import hashlib
+
+petfinder_url = 'http://api.petfinder.com/'
+key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
+secret = '79e4470e7e285d7ff90d08b4939eb16d'
+sig_inputarr = bytearray(secret + 'key=' + key, 'utf-8')
+sig_outputarr = hashlib.md5(sig_inputarr)
+sig = sig_outputarr.hexdigest()
+
+full_url = petfinder_url + 'auth.getToken?key=' + key + '&sig=' + sig
+response = urllib.request.urlopen(full_url)
+
+html = response.read()
