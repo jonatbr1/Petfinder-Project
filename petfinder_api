@@ -1,5 +1,6 @@
 import urllib.request
 import hashlib
+from lxml import etree
 
 petfinder_url = 'http://api.petfinder.com/'
 key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
@@ -10,5 +11,11 @@ sig = sig_outputarr.hexdigest()
 
 full_url = petfinder_url + 'auth.getToken?key=' + key + '&sig=' + sig
 response = urllib.request.urlopen(full_url)
-
 html = response.read()
+
+# Parse HTML response to get the Petfinder token
+root = etree.fromstring(html)
+parser = etree.HTMLParser()
+tree = etree.fromstring(html, parser)
+token_element = tree.xpath("//token")
+token = token_element[0].text
