@@ -15,9 +15,9 @@ sig = sig_hash(secret + 'key=' + key)
 
 full_url = base_url + 'auth.getToken'
 params = {'key': key, 'sig': sig}
+print('first url ' + full_url)
 response = requests.get(full_url, params=params)
 html = response.content
-print(html)
 
 # Parse HTML response to get the Petfinder token
 root = etree.fromstring(html)
@@ -25,13 +25,11 @@ parser = etree.HTMLParser()
 tree = etree.fromstring(html, parser)
 token_element = tree.xpath("//token")
 token = token_element[0].text
-print(token)
 
 
 # Make a pet.get call
-pet_id = '31007185'
-str_to_hash = secret + 'key=' + key + '&id=' + pet_id + '&token=' + token
-sig2 = sig_hash(str_to_hash)
-full_url = base_url + 'pet.get'
-params = {'key': key, 'id': pet_id, 'token': token, 'sig': sig2}
-response1 = requests.get(full_url, params=params)
+pet_id = '31219564'
+full_url1 = base_url + 'pet.get'
+params = {'key': key, 'token': token, 'id': pet_id}
+print('second url ' + full_url)
+response1 = requests.get(full_url1, params=params)
