@@ -2,14 +2,13 @@ import requests
 import hashlib
 from lxml import etree
 
+'''
+#Code to handle authentication.  Not currently implemented by Petfinder
 def sig_hash(str_to_hash):
     sig_inputarr = bytearray(str_to_hash, 'utf-8')
     sig_outputarr = hashlib.md5(sig_inputarr)
     return sig_outputarr.hexdigest();
 
-base_url = 'http://api.petfinder.com/'
-key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
-secret = '79e4470e7e285d7ff90d08b4939eb16d'
 sig = sig_hash(secret + 'key=' + key)
 
 
@@ -25,11 +24,15 @@ parser = etree.HTMLParser()
 tree = etree.fromstring(html, parser)
 token_element = tree.xpath("//token")
 token = token_element[0].text
+'''
 
+base_url = 'http://api.petfinder.com/'
+key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
+secret = '79e4470e7e285d7ff90d08b4939eb16d'
 
 # Make a pet.get call
 pet_id = '31219564'
-full_url1 = base_url + 'pet.get'
-params = {'key': key, 'token': token, 'id': pet_id}
-print('second url ' + full_url)
-response1 = requests.get(full_url1, params=params)
+full_url = base_url + 'pet.get'
+params = {'key': key, 'id': pet_id}
+response = requests.get(full_url, params=params)
+
