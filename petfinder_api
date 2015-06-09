@@ -1,6 +1,30 @@
 import requests
 import hashlib
+import sqlite3
+import csv
+import pdb # Used for debugging
 from lxml import etree
+
+# Function to create a table from a CSV
+def create_table(filename, con, cur):
+    #'/Users/jonathan.braus/Desktop/zip_code_database.csv'
+    with open(filename, 'rt') as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        data = []
+        for row  in reader:
+            data.append(row)
+
+    cols = ''
+    for col in header:
+        cols = cols + col + ','
+    cols = cols[:-1]
+
+    cur.execute("CREATE TABLE t (" + cols + ");") 
+    cur.executemany("INSERT INTO t (" + cols + ") VALUES (?);", data)
+    con.commit()
+    return
+
 
 '''
 #Code to handle authentication.  Not currently implemented by Petfinder
@@ -30,9 +54,43 @@ base_url = 'http://api.petfinder.com/'
 key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
 secret = '79e4470e7e285d7ff90d08b4939eb16d'
 
+'''
 # Make a pet.get call
 pet_id = '31219564'
 full_url = base_url + 'pet.get'
 params = {'key': key, 'id': pet_id}
 response = requests.get(full_url, params=params)
+'''
 
+
+# Create a connection to a sqlite db
+con = sqlite3.connect(":memory:")
+cur = con.cursor()
+
+create_table('/Users/jonathan.braus/Desktop/zip_code_database.csv', con, cur)
+
+# Make a pet.find call
+full_url = base_url + 'pet.find'
+animal = 'dog'
+location = '10016'
+offset = 0
+count = 2
+params = {'key': key, 'animal': animal, 'location': location, 'offset': offset, 'count': count}
+response = requests.get(full_url, params=params)
+
+# Find lastOffset value to iterate over full resultset
+root = etree.fromstring(response.content)
+pets = root.xpath('//pet')  # Returns a list with one entry per pet
+for pet in pets:
+    field_list = ''
+    qmark_list = ''
+    data = ''
+    for field in pet.iterchildren():
+        field_list = field_list + ',' + field.tag
+        qmark_list = qmark_list + ',?'
+        data = data + ',' + field.text
+
+# Drop leading commas
+field_list = field_list[1:]
+qmark_list = qmark_list[1:]
+data = data[1:]
