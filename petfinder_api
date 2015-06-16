@@ -79,7 +79,7 @@ response = requests.get(full_url, params=params)
 # Create a connection to a sqlite db
 con = sqlite3.connect(":memory:")
 cur = con.cursor()
-create_table('/Users/jonathan/Desktop/zip_code_database.csv', 't', con, cur)
+create_table('/Users/jonathan.braus/Desktop/zip_code_database.csv', 't', con, cur)
 cur.close()
 con.close()
 
@@ -114,31 +114,35 @@ con = sqlite3.connect(":memory:")
 cur = con.cursor()
 cur.execute('CREATE TABLE pets (id, shelterID, shelterPetId, name, animal, breeds, mix, age, sex, size, options, lastUpdate, status)')
 
-
-# Make a pet.find call
-full_url = base_url + 'pet.find'
-animal = 'dog'
-location = '10016'
 offset = 0
-count = 2
-params = {'key': key, 'animal': animal, 'location': location, 'offset': offset, 'count': count}
-response = requests.get(full_url, params=params)
+while offset < 4:
+    # Make a pet.find call
+    full_url = base_url + 'pet.find'
+    animal = 'dog'
+    location = '10016'
+    count = 2
+    params = {'key': key, 'animal': animal, 'location': location, 'offset': offset, 'count': count}
+    response = requests.get(full_url, params=params)
 
-# Iterate through list of pets and prep for db insert
-root = etree.fromstring(response.content)
-pets = root.xpath('//pet')  # Returns a list with one entry per pet
-data =[]
-for pet in pets:
-    field_list = ''
-    row_data = []
-    for field in pet.iterchildren():
-        if field.tag != 'media' and field.tag != 'contact' and field.tag != 'description':
-            field_list = field_list + ',' + field.tag
-            #data = data + ',' + xstr(field.text)
-            row_data.append(xstr(field.text))
-    # Convert row_data to tuple and add it to data
-    field_list = field_list[1:]
-    data.append(tuple(row_data))
+    root = etree.fromstring(response.content)
+    
+    # Get lastOffset value
+    offset = int(root.find('lastOffset').text)
 
-# Insert pet data into pets db
-cur.executemany('INSERT INTO pets VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data)
+    # Iterate through list of pets and prep for db insert    
+    pets = root.xpath('//pet')  # Returns a list with one entry per pet
+    data =[]
+    for pet in pets:
+        field_list = ''
+        row_data = []
+        for field in pet.iterchildren():
+            if field.tag != 'media' and field.tag != 'contact' and field.tag != 'description':
+                field_list = field_list + ',' + field.tag
+                #data = data + ',' + xstr(field.text)
+                row_data.append(xstr(field.text))
+        # Convert row_data to tuple and add it to data
+        field_list = field_list[1:]
+        data.append(tuple(row_data))
+
+    # Insert pet data into pets db
+    cur.executemany('INSERT INTO pets VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data)
