@@ -1,0 +1,76 @@
+import requests
+import hashlib
+import sqlite3
+import csv
+import time
+import pdb # Used for debugging
+import functions
+from lxml import etree
+
+
+base_url = 'http://api.petfinder.com/'
+key = '73a7bdb2d6fb6ff6fbf2ce0795109a58'
+secret = '79e4470e7e285d7ff90d08b4939eb16d'
+
+
+# Create a connection to a sqlite db
+con = sqlite3.connect('petfinder.db')
+cur = con.cursor()
+
+# Create pets table
+con = sqlite3.connect('petfinder.db')
+cur = con.cursor()
+cur.execute('CREATE TABLE IF NOT EXISTS pets (id, shelterID, shelterPetId, name, animal, breeds, mix, age, sex, size, options, lastUpdate, status, zip, date)')
+
+run_date = time.strftime('%x')
+cur_shelters = con.cursor()
+shelters = cur_shelters.execute('SELECT * FROM shelters')
+
+for shelter in shelters:
+    shelter_str = shelter[0]
+    # Call each shelter, once for each status A, H, P, and X
+    for status in ['A', 'H', 'P', 'X']:
+        print('shelter ' + shelter_str + ' status ' + status)
+        offset = 0
+        # Make a shelter.getPets call
+        full_url = base_url + 'shelter.getPets'
+        count = 1000
+        params = {'key': key, 'offset': offset, 'count': count, 'id': shelter_str, 'status': status}
+        response = requests.get(full_url, params=params)
+
+        #Make sure API didn't throw an error
+        if 'Error' not in  response.reason:
+
+            root = etree.fromstring(response.content)
+     
+            # Get lastOffset value
+            offset_element = root.find('lastOffset')
+            if offset_element is not None and offset_element is not None:
+                offset = int(root.find('lastOffset').text)
+
+                # Iterate through list of pets and prep for db insert    
+                pets = root.xpath('//pet')  # Returns a list with one entry per pet
+                data =[]
+                for pet in pets:
+                    field_list = ''
+                    row_data = []
+                    for field in pet.iterchildren():
+                        if field.tag != 'media' and field.tag != 'description':
+                            if field.tag == 'contact':
+                                zip = field.find('zip')
+                                field_list = field_list + ' zip'
+                                row_data.append(functions.xstr(zip.text))
+                            else:
+                                field_list = field_list + ',' + field.tag
+                                row_data.append(functions.xstr(field.text))
+                    # Add run_date as the last record of row_data
+                    row_data.append(run_date)
+                    # Convert row_data to tuple and add it to data
+                    field_list = field_list[1:]
+                    data.append(tuple(row_data))
+        
+                # Insert pet data into pets db
+                cur.executemany('INSERT INTO pets VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data)
+
+# Remove duplicate records
+functions.remove_dupes('id', 'pets', cur)
