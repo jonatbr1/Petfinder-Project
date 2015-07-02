@@ -1,0 +1,38 @@
+import csv
+import pdb
+
+# Function to create a table from a CSV
+def create_table(filename, tablename, con, cur):
+    #'/Users/jonathan.braus/Desktop/zip_code_database.csv'
+    with open(filename, 'rt') as file:
+        reader = csv.reader(file)
+        header = next(reader)
+        data = []
+        for row  in reader:
+            data.append(row)
+
+    cols = ''
+    for col in header:
+        cols = cols + col + ','
+    cols = cols[:-1]
+    cur.execute("CREATE TABLE IF NOT EXISTS " + tablename + " (" + cols + ");") 
+    cur.executemany("INSERT INTO " + tablename + " (" + cols + ") VALUES (?);", data)
+    con.commit()
+    return
+
+# Function to remove duplicates from a table
+def remove_dupes(key, tablename, cur):
+    cur.execute('DELETE FROM ' + tablename + ' WHERE rowid NOT IN (SELECT MIN(rowid) FROM ' + tablename + ' GROUP BY ' + key + ')') 
+
+# Function to convert NoneType to empty string
+def xstr(s):
+    if s is None:
+        return ''
+    return str(s)
+
+# Function to make API call
+def api_call(request, params):
+    full_url = base_url + request
+    params['key'] = key
+    response = requests.get(full_url, params=params)
+    return response
