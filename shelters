@@ -27,11 +27,12 @@ zips = cur_zip.execute('SELECT * FROM zips')
 for zip in zips:
     zip_str = zip[0]
     offset = 0
-    while offset < 2000:
+    while offset < 20:
+        print('while zip ' + zip_str)
         # Make a shelter.find call
         full_url = base_url + 'shelter.find'
         location = zip_str
-        count = 1000
+        count = 20
         params = {'key': key, 'location': location, 'offset': offset, 'count': count}
         response = requests.get(full_url, params=params)
 
@@ -42,11 +43,11 @@ for zip in zips:
         
             # Get lastOffset value
             offset_element = root.find('lastOffset')
-            if offset_element is not None:
-                offset = int(root.find('lastOffset').text)
+            if offset_element is not None and offset_element.text is not None:
+                offset = int(offset_element.text)
 
                 # Iterate through list of shelters and prep for db insert    
-                pets = root.xpath('//shelter')  # Returns a list with one entry per shelter
+                shelters = root.xpath('//shelter')  # Returns a list with one entry per shelter
                 data =[]
                 for shelter in shelters:
                     field_list = ''
@@ -63,3 +64,9 @@ for zip in zips:
         
                 # Insert pet data into pets db
                 cur.executemany('INSERT INTO shelters VALUES (?, ?, ?, ?, ?, ?, ?, ?)', data)
+            else:
+                # In the case of a silent error like a bad geographical region set offset to 20 to move to next zip
+                offset = 20
+
+# Remove duplicate records
+functions.remove_dupes('id', 'shelters', cur)
