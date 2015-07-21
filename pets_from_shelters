@@ -26,10 +26,11 @@ else:
 # Create a connection to a sqlite db
 con = sqlite3.connect('/Users/jonathan.braus/Documents/Petfinder/petfinder.db')
 cur = con.cursor()
+cur2 = con.cursor()
 
 # Create pets and pets_temp tables
 cur.execute('CREATE TABLE IF NOT EXISTS pets (id, shelterID, shelterPetId, name, animal, breeds, mix, age, sex, size, options, lastUpdate, status, zip, date, adopt_date)')
-cur.execute('CREATE TABLE IF NOT EXISTS pets_temp (id, shelterID, shelterPetId, name, animal, breeds, mix, age, sex, size, options, lastUpdate, status, zip, date, adopt_date)')
+cur.execute('CREATE TABLE IF NOT EXISTS pets_temp (id, shelterID, shelterPetId, name, animal, breeds, mix, age, sex, size, options, lastUpdate, status, zip, date)')
 
 run_date = time.strftime('%x')
 
@@ -49,7 +50,7 @@ counter = 0
 for iter in iterator:
     iter_str = iter[0]
     counter = counter + 1
-    print(counter)
+
     # Exit program early if API limit has been reached
     if limit_exceeded == 1:
         print('API Limit Reached')
@@ -59,7 +60,7 @@ for iter in iterator:
     for status in status_lst:
         print('shelter/zip ' + iter_str + ' status ' + status + ' row id ' + str(counter))
         offset = 0
-        pdb.set_trace()
+
         # Make the API call
         count = 1
         if shelters_or_zips == 'shelters':
@@ -71,7 +72,7 @@ for iter in iterator:
         
         
         response = requests.get(full_url, params=params)
-        print(response.content)
+        
         
         # Make sure API didn't throw an error and there is a non-empty response
         # Seen cases where response.content returns emtpy byte string b'' but does not equal None
@@ -100,14 +101,12 @@ for iter in iterator:
                     pets = root.xpath('//pet')  # Returns a list with one entry per pet
                     data =[]
                     for pet in pets:
-                        field_list = ''
                         row_data = []
                         for field in pet.iterchildren():                                
                             if field.tag not in ('media', 'description'):
                                 # Extract zip from shelter's contact info
                                 if field.tag == 'contact':
                                     zip = field.find('zip')
-                                    field_list = field_list + ' zip'
                                     row_data.append(functions.xstr(zip.text))
                                 # Loop over and concatenate each breed in breeds
                                 elif field.tag == 'breeds':
@@ -116,18 +115,18 @@ for iter in iterator:
                                         breeds.append(breed.text)
                                     row_data.append(','.join(breeds))
                                 else:
-                                    field_list = field_list + ',' + field.tag
                                     row_data.append(functions.xstr(field.text))
                         # Add run_date as the date record of row_data
                         row_data.append(run_date)
                         # Insert a blank value for adopt_date
-                        row_data.append('')
+                        #row_data.append(run_date)
                         # Convert row_data to tuple and add it to data
-                        field_list = field_list[1:]
                         data.append(tuple(row_data))
+                        
                     
                     # Insert pet data into pets db
-                    cur.executemany('INSERT INTO pets_temp VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data)
+                    cur2.executemany('INSERT INTO pets_temp VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data)
+
   
 # Remove duplicate records
 functions.remove_dupes('id', 'pets', cur)
@@ -146,5 +145,6 @@ if limit_exceeded != 1:
 # Commit changes to the db
 con.commit()
 cur.close()
+cur2.close()
 con.close()
 
