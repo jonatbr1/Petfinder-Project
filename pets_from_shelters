@@ -39,10 +39,10 @@ last_run = cur.execute('SELECT * FROM last_run').fetchone()
 
 # Get list of zips
 if last_run is not None and last_run[3] == 'Limit Reached':
-    iterator = cur.execute('SELECT ' + keycol + ',rowid FROM ' + shelters_or_zips + ' WHERE zip >= ' + last_run[0])
+    iterator = cur.execute("SELECT " + keycol + ",rowid FROM " + shelters_or_zips + " WHERE zip >= '" + last_run[0] + "'")
 else:
     iterator = cur.execute('SELECT ' + keycol + ',rowid FROM ' + shelters_or_zips)
-    
+  
 # Variable to indicate whether my daily API limit has been reached
 limit_exceeded = 0
 
@@ -62,7 +62,6 @@ for iter in iterator:
         offset = 0
 
         # Make the API call
-        count = 1
         if shelters_or_zips == 'shelters':
             full_url = base_url + 'shelter.getPets'
             params = {'key': key, 'offset': offset, 'count': count, 'id': iter_str, 'status': status}
@@ -129,7 +128,7 @@ for iter in iterator:
 
   
 # Remove duplicate records
-functions.remove_dupes('id', 'pets', cur)
+functions.remove_dupes('id', 'pets_temp', cur)
 
 # Record a successful completion in last_run table
 if limit_exceeded != 1:
@@ -139,8 +138,11 @@ if limit_exceeded != 1:
     # Update adopt_date for those pets no longer in db
     cur.execute('UPDATE pets SET pets.adopt_date = pets_temp.date FROM pets LEFT JOIN pets_temp ON pets.id = pets_temp.id WHERE pets_temp.id IS NULL')
 
-    # Merge new pets into pets table
-    cur.execute('INSERT INTO pets SELECT * FROM pets_temp LEFT JOIN pets ON pets.id = pets_temp.id WHERE pets.id IS NULL')
+# Merge new pets into pets table
+cur.execute("INSERT INTO pets SELECT tmp.*,'' FROM pets_temp tmp LEFT JOIN pets ON pets.id = tmp.id WHERE pets.id IS NULL")
+
+# Drop pets_temp table
+cur.execute('DROP TABLE pets_temp')
    
 # Commit changes to the db
 con.commit()
