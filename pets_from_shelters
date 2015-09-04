@@ -62,6 +62,7 @@ for iter in iterator:
         offset = 0
 
         # Make the API call
+        count = 1000
         if shelters_or_zips == 'shelters':
             full_url = base_url + 'shelter.getPets'
             params = {'key': key, 'offset': offset, 'count': count, 'id': iter_str, 'status': status}
@@ -136,17 +137,16 @@ if limit_exceeded != 1:
     cur.execute('INSERT INTO last_run VALUES (?, ?, ?, ?)', ('','','','Completed'))
 
     # Update adopt_date for those pets no longer in db
-    cur.execute('UPDATE pets SET pets.adopt_date = pets_temp.date FROM pets LEFT JOIN pets_temp ON pets.id = pets_temp.id WHERE pets_temp.id IS NULL')
+    cur.execute("UPDATE pets SET adopt_date = ? WHERE adopt_date != '' AND pets.id NOT IN (SELECT id FROM pets_temp)",(run_date,))
 
-# Merge new pets into pets table
-cur.execute("INSERT INTO pets SELECT tmp.*,'' FROM pets_temp tmp LEFT JOIN pets ON pets.id = tmp.id WHERE pets.id IS NULL")
+    # Merge new pets into pets table
+    cur.execute("INSERT INTO pets SELECT tmp.*,'' FROM pets_temp tmp LEFT JOIN pets ON pets.id = tmp.id WHERE pets.id IS NULL")
 
-# Drop pets_temp table
-cur.execute('DROP TABLE pets_temp')
+    # Drop pets_temp table
+    cur.execute('DROP TABLE pets_temp')
    
 # Commit changes to the db
 con.commit()
 cur.close()
 cur2.close()
 con.close()
-
