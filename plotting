@@ -1,0 +1,31 @@
+import sqlite3
+import numpy as np
+import matplotlib.pyplot as plt
+import pdb
+
+def plot(filter1):
+    con = sqlite3.connect('/Users/jonathan.braus/Documents/Petfinder/petfinder.db')
+    cur = con.cursor()
+
+    cur.execute("SELECT zip, count(*) FROM pets WHERE zip in (" + ",".join(["?"]*len(filter1)) + ") GROUP BY zip",filter1)
+    data = cur.fetchall()
+
+    cur.close()
+    con.close()
+
+    zips, counts = zip(*data)   # Puts the first column of data in zips, second column in counts
+    N = len(zips)   # Number of zips to plot
+    ind = np.arange(N)  # Returns list of evenly spaced intervals
+
+    fig, ax = plt.subplots()
+    bar1 = ax.bar(ind, counts)
+
+    # Format title, axes, etc
+    ax.set_xticklabels(filter1)
+    width = 0.35
+    ax.set_xticks(ind+width)
+
+
+    plt.show()
+
+plot(('07936','10013','11211'))
