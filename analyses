@@ -17,11 +17,15 @@ Profiling:
 con = sqlite3.connect('/Users/jonathan.braus/Documents/Petfinder/petfinder.db')
 cur = con.cursor()
 
-# Get Dogs by Zip
-def get_pets(breed, mixed, age, sex, size, grouping, debug):
+# Get Dogs by Zip, State, etc
+def get_pets(breed, mixed, age, sex, size, zp, msa, state, grouping, metric, debug):
+    # breed, mixed, age, sex, size, zp, msa, state are filters
+    # grouping is the field to group the output on
+    # metric is the actual statistic being measured such as count, pct of breed, pct of pets, etc
+    # debug is for my own testing purposes, set to 0 in production
     # mixed takes values 'yes' or 'no'
     # size takes values 'S', 'M', 'L', or 'XL'
-    # debug is for my own testing purposes, set to 0 in production
+    
     params = []
 
     # Build Filters
@@ -51,6 +55,18 @@ def get_pets(breed, mixed, age, sex, size, grouping, debug):
         optional_filters += "size=? AND "
         params.append(size)
 
+    if bool(zp):
+        optional_filters += "zip=? AND "
+        params.append(zp)
+
+    if bool(msa):
+        optional_filters += "msa=? AND "
+        params.append(msa)
+
+    if bool(state):
+        optional_filters += "state=? AND "
+        params.append(state)
+
     # Remove trailing (space)AND(space) if any optional filters specified
     optional_filters = optional_filters[:-5]
 
@@ -65,3 +81,5 @@ def get_pets(breed, mixed, age, sex, size, grouping, debug):
         cur.execute("SELECT " + grouping + ", count(*) AS cnt FROM pets" + optional_filters + " GROUP BY " + grouping, params)
     
     return cur    
+
+get_pets('Shih Tzu','','','','S','','','','zip',0)
