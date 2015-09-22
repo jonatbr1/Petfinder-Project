@@ -1,0 +1,67 @@
+import sqlite3
+import pdb
+
+'''
+Questions To Ask
+
+Profiling:
+1) Geographic concentrations by breed in absolute terms, as a % of the overall breed, and % of adoptable pets in that region
+2) Breed breakdown by age, sex, size, mixed
+3) How many purebreds vs mutts
+4) Share of the adoptable population by characteristic
+5) How many similar dogs within X miles
+6) For mutts, what are most common mixes i.e. a Boxer is often crossed with a Pit
+'''
+
+# Create a connection to a sqlite db
+con = sqlite3.connect('/Users/jonathan.braus/Documents/Petfinder/petfinder.db')
+cur = con.cursor()
+
+# Get Dogs by Zip
+def get_pets(breed, mixed, age, sex, size, grouping, debug):
+    # mixed takes values 'yes' or 'no'
+    # size takes values 'S', 'M', 'L', or 'XL'
+    # debug is for my own testing purposes, set to 0 in production
+    params = []
+
+    # Build Filters
+    optional_filters = ''
+    
+    if bool(breed): # bool(breed) is true if user specifies a breed
+        optional_filters += "breeds LIKE ? AND "
+        params.append('%' + breed + '%')
+        
+    if mixed == 'yes':
+        optional_filters += "(mix=? OR breeds LIKE '%,%') AND "
+        params.append(mixed)
+
+    if mixed == 'no':
+        optional_filters += "(mix=? AND breeds NOT LIKE '%,%') AND "
+        params.append(mixed)
+
+    if bool(age):
+        optional_filters += "age=? AND "
+        params.append(age)
+
+    if bool(sex):
+        optional_filters += "sex=? AND "
+        params.append(sex)
+
+    if bool(size):
+        optional_filters += "size=? AND "
+        params.append(size)
+
+    # Remove trailing (space)AND(space) if any optional filters specified
+    optional_filters = optional_filters[:-5]
+
+    # Insert a WHERE if any filters are specified
+    if len(optional_filters) > 0:
+        optional_filters = ' WHERE ' + optional_filters
+
+
+    if debug == 1:
+        cur.execute("SELECT sum(cnt) FROM (SELECT " + grouping + ", count(*) AS cnt FROM pets" + optional_filters + " GROUP BY " + grouping + ")", params)        
+    else:
+        cur.execute("SELECT " + grouping + ", count(*) AS cnt FROM pets" + optional_filters + " GROUP BY " + grouping, params)
+    
+    return cur    
