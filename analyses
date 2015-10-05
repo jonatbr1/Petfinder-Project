@@ -17,69 +17,122 @@ Profiling:
 con = sqlite3.connect('/Users/jonathan.braus/Documents/Petfinder/petfinder.db')
 cur = con.cursor()
 
-# Get Dogs by Zip, State, etc
-def get_pets(breed, mixed, age, sex, size, zp, msa, state, grouping, metric, debug):
-    # breed, mixed, age, sex, size, zp, msa, state are filters
-    # grouping is the field to group the output on
-    # metric is the actual statistic being measured such as count, pct of breed, pct of pets, etc
-    # debug is for my own testing purposes, set to 0 in production
-    # mixed takes values 'yes' or 'no'
-    # size takes values 'S', 'M', 'L', or 'XL'
-    
-    params = []
 
-    # Build Filters
+# Function to remove dictionary key
+def removekey(d, key):
+    r = dict(d)
+    del r[key]
+    return r
+
+
+# Build filters
+def get_filters(filter_dict, params):
+    # params is the list that stores all inputs for the entire query
+
     optional_filters = ''
     
-    if bool(breed): # bool(breed) is true if user specifies a breed
+    if bool(filter_dict['breed']): # bool(breed) is true if user specifies a breed
         optional_filters += "breeds LIKE ? AND "
-        params.append('%' + breed + '%')
+        params.append('%' + filter_dict['breed'] + '%')
         
-    if mixed == 'yes':
+    if filter_dict['mixed'] == 'yes':
         optional_filters += "(mix=? OR breeds LIKE '%,%') AND "
-        params.append(mixed)
+        params.append(filter_dict['mixed'])
 
-    if mixed == 'no':
+    if filter_dict['mixed'] == 'no':
         optional_filters += "(mix=? AND breeds NOT LIKE '%,%') AND "
-        params.append(mixed)
+        params.append(filter_dict['mixed'])
 
-    if bool(age):
+    if bool(filter_dict['age']):
         optional_filters += "age=? AND "
-        params.append(age)
+        params.append(filter_dict['age'])
 
-    if bool(sex):
+    if bool(filter_dict['sex']):
         optional_filters += "sex=? AND "
-        params.append(sex)
+        params.append(filter_dict['sex'])
 
-    if bool(size):
+    if bool(filter_dict['size']):
         optional_filters += "size=? AND "
-        params.append(size)
+        params.append(filter_dict['size'])
 
-    if bool(zp):
+    if bool(filter_dict['zp']):
         optional_filters += "zip=? AND "
-        params.append(zp)
+        params.append(filter_dict['zp'])
 
-    if bool(msa):
+    if bool(filter_dict['msa']):
         optional_filters += "msa=? AND "
-        params.append(msa)
+        params.append(filter_dict['msa'])
 
-    if bool(state):
+    if bool(filter_dict['state']):
         optional_filters += "state=? AND "
-        params.append(state)
+        params.append(filter_dict['state'])
 
     # Remove trailing (space)AND(space) if any optional filters specified
     optional_filters = optional_filters[:-5]
 
+    return (optional_filters, params)
+
+
+
+
+# Build a full sql query
+def get_query(breed, mixed, age, sex, size, zp, msa, state, grouping, sub_query, debug):
+    # breed, mixed, age, sex, size, zp, msa, state are filters
+    # grouping is the field to group the output on
+    # metric is the actual statistic being measured such as count, pct, etc
+    # pct_field is only needed if metric = pct, represents what % is being calculated ie % of breed, % of region, etc
+    # debug is for my own testing purposes, set to 0 in production
+    # mixed takes values 'yes' or 'no'
+    # size takes values 'S', 'M', 'L', or 'XL'
+    
+    filter_dict = {'breed': breed, 'mixed': mixed, 'age': age, 'sex': sex, 'size': size, 'zp': zp, 'msa': msa, 'state': state}
+
+    # Initialize params with subquery's parameters if any exist
+    if sub_query == '':
+        params = []
+    else:
+        params = sub_query[1]
+
+    filter_data = get_filters(filter_dict, params)
+
+    optional_filters = filter_data[0]
+    params = filter_data[1]
+
     # Insert a WHERE if any filters are specified
     if len(optional_filters) > 0:
         optional_filters = ' WHERE ' + optional_filters
-
-
-    if debug == 1:
-        cur.execute("SELECT sum(cnt) FROM (SELECT " + grouping + ", count(*) AS cnt FROM pets" + optional_filters + " GROUP BY " + grouping + ")", params)        
     else:
-        cur.execute("SELECT " + grouping + ", count(*) AS cnt FROM pets" + optional_filters + " GROUP BY " + grouping, params)
-    
-    return cur    
+        optional_filters = ""
 
-get_pets('Shih Tzu','','','','S','','','','zip',0)
+    # Insert a GROUP BY if grouping is specified
+    if len(grouping) > 0:
+        group_by = " GROUP BY " + grouping
+        comma = ","
+        
+    else:
+        group_by = ""
+        comma = ""
+
+    # Insert denominator subquery when necessary
+    if len(sub_query) > 0:
+        denom = "/(" + sub_query[0] + ")"
+    else:
+        denom = ""
+
+    my_query = "SELECT " + grouping + comma + "count(*)" + denom + " AS cnt FROM pets" + optional_filters + group_by
+
+    return (my_query, params)
+
+    """
+    if debug == 1:
+        cur.execute(my_query, params)        
+    else:
+        cur.execute(my_query, params)
+    
+    return cur
+    """
+
+
+sub_query = get_query('Shih Tzu','','','','S','','','','','',0)
+final_query = get_query('Shih Tzu','','','','S','','','','zip',sub_query,0)
+
